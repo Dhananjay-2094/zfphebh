@@ -1,8 +1,8 @@
 # Power Forecast Platform
 
-Live dashboard: [Open the application](https://power-forecast-platform.vercel.app)
+Live dashboard: [Open the application](https://zfphebh.vercel.app)
 
-Backend API documentation: [Open the FastAPI docs](https://backend-five-mu-84.vercel.app/docs).
+API documentation: [Open the FastAPI docs](https://zfphebh.vercel.app/docs).
 
 A day-ahead wind dashboard for a UK energy utility. It fetches national wind forecasts and actuals directly from the Elexon Insights API, shows the forecast available at a selected order deadline, and measures forecast accuracy. The dashboard currently uses a fixed January 2026 analysis range.
 
@@ -35,6 +35,7 @@ power-forecast-platform/
 │   ├── Dockerfile          # Frontend container image
 │   └── vite.config.js      # Vite configuration
 ├── docker-compose.yml      # Runs frontend and backend locally
+├── vercel.json             # Builds and routes the frontend and backend in one Vercel project
 ├── .gitignore              # Excludes virtualenvs, build output, and env files
 └── README.md               # Project and setup documentation
 ```
@@ -104,9 +105,9 @@ Elexon request failures return HTTP 502. Invalid ranges return HTTP 422.
 
 ## Deployment
 
-The backend needs outbound HTTPS access to `data.elexon.co.uk`. Configure `CORS_ORIGINS` on the backend to include the deployed frontend origin. Set `VITE_API_URL` in Vercel to the deployed backend URL and redeploy so Vite can bake it into the frontend build.
+The backend needs outbound HTTPS access to `data.elexon.co.uk`. The root `vercel.json` configures the frontend and backend as services in one Vercel project. It routes `/api/*` requests to FastAPI and sends other app routes to the Vite frontend. It should also route `/docs`, `/openapi.json`, and optionally `/redoc` to the backend so the API documentation and its schema are available on the shared domain. Keep the backend routes before the frontend catch-all rewrite.
 
-For Vercel, create two projects from this repository. Set the frontend project's root directory to `frontend` and use the Vite build command and `dist` output. Set the backend project's root directory to `backend`; `backend/index.py` exposes the FastAPI application and `backend/requirements.txt` lists its dependencies. Configure `VITE_API_URL` on the frontend project and `CORS_ORIGINS` on the backend project with the corresponding deployment URLs. Vercel uses its managed runtimes for these projects; Docker Compose remains available for local development.
+For the combined Vercel deployment, set `VITE_API_URL` to the deployment origin (for example, `https://zfphebh.vercel.app`) so the frontend calls the backend through the same domain. `backend/index.py` exposes the FastAPI application and `backend/requirements.txt` lists its dependencies. Because frontend and API share an origin, a separate CORS origin is not normally needed for browser requests. Docker Compose remains available for local development.
 
 For Heroku, the backend is in a monorepo subdirectory and must be deployed with `backend/` as the app root (for example, by pushing a Git subtree). The existing `backend/Dockerfile` and `backend/heroku.yml` configure a Docker-based Heroku build.
 
