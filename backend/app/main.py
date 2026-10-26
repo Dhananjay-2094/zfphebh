@@ -20,4 +20,5 @@ app.include_router(router)
 
 @app.get("/")
 def root():
+    # Return basic service metadata and links to the API docs and health endpoint.
     return {"name": "power-forecast-api", "docs": "/docs", "health": "/api/health"}

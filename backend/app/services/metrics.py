@@ -10,6 +10,7 @@ HORIZON_LABELS = ["0-6h", "6-12h", "12-24h", "24-36h", "36-48h", "48-72h"]
 
 def join_actuals(forecast: pd.DataFrame, actual: pd.DataFrame) -> pd.DataFrame:
     """Join matching delivery periods and calculate forecast errors."""
+    # Match forecasts to actuals and calculate signed and absolute forecast errors.
     df = forecast.merge(actual, on="start_time", how="inner")
     df["error"] = df["forecast_mw"] - df["actual_mw"]
     df["abs_error"] = df["error"].abs()
@@ -21,6 +22,7 @@ def join_actuals(forecast: pd.DataFrame, actual: pd.DataFrame) -> pd.DataFrame:
 
 
 def in_range(df: pd.DataFrame, start=None, end=None) -> pd.DataFrame:
+    # Filter evaluated rows to the optional local delivery-day bounds.
     m = pd.Series(True, index=df.index)
     if start is not None:
         m &= df["day"] >= pd.Timestamp(start)
@@ -30,10 +32,12 @@ def in_range(df: pd.DataFrame, start=None, end=None) -> pd.DataFrame:
 
 
 def _r(x, nd=1):
+    # Round a numeric metric while preserving missing values as None.
     return None if x is None or pd.isna(x) else round(float(x), nd)
 
 
 def summarize(df: pd.DataFrame) -> dict:
+    # Compute sample count and aggregate error, bias, and percentile metrics.
     if df.empty:
         return {"n": 0, "mae_mw": None, "rmse_mw": None, "bias_mw": None,
                 "nmae_pct": None, "mean_actual_mw": None,
@@ -53,6 +57,7 @@ def summarize(df: pd.DataFrame) -> dict:
 
 
 def _group_rows(df, key, labels):
+    # Aggregate forecast error metrics into labeled groups.
     g = df.groupby(key, observed=True)
     out = g.agg(n=("error", "size"), mae=("abs_error", "mean"),
                 mse=("sq_error", "mean"), bias=("error", "mean")).reset_index()
@@ -69,6 +74,7 @@ def breakdown(by: str, decision_eval: pd.DataFrame, all_eval: pd.DataFrame) -> l
     hour / day / wind_level use the decision-time forecast (what the buyer had).
     horizon uses every published forecast, to show how accuracy decays with lead time.
     """
+    # Build accuracy rows grouped by hour, day, lead time, or forecast level.
     if by == "hour":
         return _group_rows(decision_eval, "hour", lambda h: f"{int(h):02d}:00")
     if by == "day":
@@ -89,6 +95,7 @@ def breakdown(by: str, decision_eval: pd.DataFrame, all_eval: pd.DataFrame) -> l
 
 
 def distribution(df: pd.DataFrame, bins: int = 24) -> dict:
+    # Build an error histogram and return its selected quantiles.
     if df.empty:
         return {"bins": [], "p10_mw": None, "p50_mw": None, "p90_mw": None}
     counts, edges = np.histogram(df["error"], bins=bins)

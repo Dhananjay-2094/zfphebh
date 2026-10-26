@@ -6,6 +6,7 @@ from app.config import BANDS, MIN_PRIOR_DAYS
 
 def band_errors(eval_df: pd.DataFrame, delivery_day: pd.Timestamp, lo_q: float, hi_q: float):
     """Use prior-day errors when enough history is available."""
+    # Choose calibration errors from prior days when enough history exists.
     prior = eval_df[eval_df["day"] < delivery_day]
     n_days = prior["day"].nunique()
     if n_days >= MIN_PRIOR_DAYS:
@@ -21,6 +22,7 @@ def band_errors(eval_df: pd.DataFrame, delivery_day: pd.Timestamp, lo_q: float, 
 
 def walk_forward_coverage(eval_df: pd.DataFrame, lo_q: float, hi_q: float) -> dict:
     """Measure coverage using bands fitted only on earlier days."""
+    # Measure interval coverage by testing each day against earlier-day errors.
     inside = total = 0
     for day in sorted(eval_df["day"].unique()):
         prior = eval_df[eval_df["day"] < day]
@@ -36,6 +38,7 @@ def walk_forward_coverage(eval_df: pd.DataFrame, lo_q: float, hi_q: float) -> di
 
 def compute(day_forecast: pd.DataFrame, eval_df: pd.DataFrame, delivery_day: pd.Timestamp,
             demand_mw: float, band: str) -> dict:
+    # Estimate wind and procurement ranges, summaries, and backtested coverage.
     lo_q, hi_q, label = BANDS[band]
     e_lo, e_hi, info = band_errors(eval_df, delivery_day, lo_q, hi_q)
 

@@ -16,6 +16,7 @@ class ShortfallRequest(BaseModel):
 
     @model_validator(mode="after")
     def delivery_inside_range(self):
+        # Validate that the delivery date falls within the selected date range.
         if self.start_date > self.end_date:
             raise ValueError("start_date must be on or before end_date")
         if not self.start_date <= self.delivery_date <= self.end_date:

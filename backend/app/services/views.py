@@ -20,10 +20,12 @@ class UpstreamError(RuntimeError):
 
 
 def _num(x, nd=1):
+    # Round a numeric value for JSON output while mapping missing values to None.
     return None if x is None or pd.isna(x) else round(float(x), nd)
 
 
 def _check_range(start: date, end: date):
+    # Validate date ordering and enforce the configured maximum range length.
     if start > end:
         raise NotFound("start_date must be on or before end_date")
     if (end - start).days + 1 > MAX_RANGE_DAYS:
@@ -32,6 +34,7 @@ def _check_range(start: date, end: date):
 
 
 def _check_day(d: date, start: date, end: date):
+    # Validate a delivery date against its range and return it as a pandas timestamp.
     _check_range(start, end)
     if not start <= d <= end:
         raise NotFound("delivery_date must be within the selected date range")
@@ -39,6 +42,7 @@ def _check_day(d: date, start: date, end: date):
 
 
 def _safe(fn, *args):
+    # Convert upstream Elexon fetch failures into the service-layer exception type.
     try:
         return fn(*args)
     except ElexonUnavailable as exc:
@@ -46,10 +50,12 @@ def _safe(fn, *args):
 
 
 def _local_day(df: pd.DataFrame) -> pd.Series:
+    # Convert UTC delivery timestamps to normalized local calendar dates.
     return df["start_time"].dt.tz_convert(TIMEZONE).dt.tz_localize(None).dt.normalize()
 
 
 def meta() -> dict:
+    # Return API defaults, supported bands, timezone, and error sign convention.
     return {
         "source": "elexon",
         "default_start_day": DEFAULT_START_DAY.isoformat(),
@@ -68,6 +74,7 @@ def meta() -> dict:
 def decision(
     delivery_date: date, cutoff_hour: float, start: date | None = None, end: date | None = None,
 ):
+    # Build the delivery-day forecast response and summary statistics.
     start = start or delivery_date
     end = end or delivery_date
     day = _check_day(delivery_date, start, end)
@@ -96,17 +103,20 @@ def decision(
 
 
 def _eval(start, end, cutoff_hour):
+    # Validate a range, normalize the cutoff, and load evaluated forecast rows.
     _check_range(start, end)
     c = store.norm_cutoff(cutoff_hour)
     return c, _safe(store.evaluation, start, end, c)
 
 
 def accuracy_summary(start, end, cutoff_hour: float):
+    # Build the aggregate accuracy response for a selected range and cutoff.
     c, ev = _eval(start, end, cutoff_hour)
     return {"cutoff_hour": c, "start": str(start), "end": str(end), **metrics.summarize(ev)}
 
 
 def accuracy_breakdown(by: str, start, end, cutoff_hour: float):
+    # Build grouped accuracy output, translating invalid grouping requests.
     c, ev = _eval(start, end, cutoff_hour)
     allv = _safe(store.evaluation_all_horizons, start, end)
     try:
@@ -117,6 +127,7 @@ def accuracy_breakdown(by: str, start, end, cutoff_hour: float):
 
 
 def accuracy_distribution(start, end, cutoff_hour: float):
+    # Build the error distribution response for a selected range and cutoff.
     c, ev = _eval(start, end, cutoff_hour)
     return {"cutoff_hour": c, **metrics.distribution(ev)}
 
@@ -124,6 +135,7 @@ def accuracy_distribution(start, end, cutoff_hour: float):
 def shortfall_view(
     delivery_date: date, start: date, end: date, demand_mw: float, band: str, cutoff_hour: float,
 ):
+    # Validate inputs and produce procurement shortfall estimates for one day.
     day = _check_day(delivery_date, start, end)
     if band not in BANDS:
         raise NotFound(f"band must be one of {list(BANDS)}")

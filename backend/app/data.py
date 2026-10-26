@@ -32,10 +32,12 @@ class Dataset:
 
 
 def _empty_frame(columns: dict) -> pd.DataFrame:
+    # Build an empty DataFrame with the requested column names and dtypes.
     return pd.DataFrame({name: pd.Series(dtype=dtype) for name, dtype in columns.items()})
 
 
 def _request(dataset: str, params: dict) -> list:
+    # Fetch one Elexon dataset endpoint and normalize its response into a list of records.
     try:
         response = httpx.get(f"{BASE_URL}/{dataset}/stream", params=params,
                              headers={"accept": "application/json"}, timeout=45)
@@ -47,12 +49,14 @@ def _request(dataset: str, params: dict) -> list:
 
 
 def _utc_bounds(start: date, end: date) -> tuple[pd.Timestamp, pd.Timestamp]:
+    # Convert an inclusive London-local date range into UTC half-open timestamp bounds.
     lo = pd.Timestamp(start).tz_localize("Europe/London").tz_convert("UTC")
     hi = pd.Timestamp(end + timedelta(days=1)).tz_localize("Europe/London").tz_convert("UTC")
     return lo, hi
 
 
 def _windows(start: date, end: date, step_days: int):
+    # Yield consecutive date windows no longer than the requested number of days.
     current = start
     while current <= end:
         last = min(current + timedelta(days=step_days - 1), end)
@@ -61,6 +65,7 @@ def _windows(start: date, end: date, step_days: int):
 
 
 def _actual(start: date, end: date) -> pd.DataFrame:
+    # Load and clean actual national wind generation for the requested dates.
     actual_end = min(end, datetime.now(ZoneInfo("Europe/London")).date())
     if start > actual_end:
         return _empty_frame(_EMPTY_ACTUAL)
@@ -93,6 +98,7 @@ def _actual(start: date, end: date) -> pd.DataFrame:
 
 
 def _forecast(start: date, end: date) -> pd.DataFrame:
+    # Load forecast publications and retain usable delivery-time and lead-time records.
     rows = []
     # Earlier publications are needed to reconstruct the day-ahead cutoff forecast.
     for first, last in _windows(start - timedelta(days=4), end, 2):
@@ -118,6 +124,7 @@ def _forecast(start: date, end: date) -> pd.DataFrame:
 
 
 def get_dataset(start: date, end: date) -> Dataset:
+    # Return cached actual and forecast frames, fetching and caching them when needed.
     key = (start.isoformat(), end.isoformat())
     now = time.monotonic()
     with _cache_lock:
