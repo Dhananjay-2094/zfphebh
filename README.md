@@ -17,7 +17,6 @@ power-forecast-platform/
 │   │   ├── config.py       # Defaults, limits, and CORS settings
 │   │   ├── data.py         # Elexon requests and in-memory cache
 │   │   └── main.py         # FastAPI application setup
-│   ├── tests/              # Backend tests
 │   ├── index.py            # Vercel FastAPI entrypoint
 │   ├── requirements.txt    # Backend runtime dependencies
 │   ├── Dockerfile          # Backend container image
